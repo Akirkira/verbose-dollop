@@ -1,0 +1,169 @@
+`timescale 1ns / 1ps
+
+module maze(
+input 		        clk,
+input [5:0] 		  starting_col, starting_row, 	// indicii punctului de start
+input  				    maze_in, 			// oferă informații despre punctul de coordonate [row, col]
+output reg [5:0] 	row, col,	 		// selectează un rând si o coloană din labirint
+output 	reg			  maze_oe,			// output enable (activează citirea din labirint la rândul și coloana date) - semnal sincron	
+output 	reg			  maze_we, 			// write enable (activează scrierea în labirint la rândul și coloana  date) - semnal sincron
+output 	reg			  done);		 		// ieșirea din labirint a fost gasită; semnalul rămane activ 
+
+integer state = 10,state_next = 10;
+reg [5:0] coloana_curenta, rand_curent;
+			
+			
+`define start 				'd10
+`define nord				  'd20
+`define nempty				'd25
+`define nwrite				'd30
+`define est					  'd35
+`define	eempty				'd40
+`define ewrite				'd45
+`define sud				  	'd50
+`define	sempty				'd55
+`define swrite				'd60
+`define vest				  'd65
+`define	wempty				'd70
+`define wwrite				'd75
+`define exit				  'd80
+
+
+
+
+
+always @(posedge clk) begin
+	state <= state_next;
+	end
+	
+always @(*) begin
+
+	maze_oe = 0;
+	maze_we = 0;
+	
+	case ( state )
+	
+	`start: begin
+		state_next = `sud;
+		row = starting_row;
+		col = starting_col;
+		coloana_curenta = col;
+		rand_curent = row;
+		maze_we = 1;
+	end
+	
+	//Nord
+	
+	`nord: begin
+		col=coloana_curenta+1;
+		maze_oe=1;
+		state_next=`nempty;
+	end
+	
+	`nempty: begin
+		state_next = `nwrite;
+	end
+	
+	`nwrite: begin
+		if( maze_in == 1 ) begin
+			col = coloana_curenta;
+			state_next = `vest;
+		end
+		else begin
+			coloana_curenta = col;
+			maze_we = 1;
+			state_next =`est;
+			if ((col == 0 || col == 63 || row ==0 || row == 63))
+				state_next = `exit;
+		end
+	end
+	
+	//Vest
+	
+	`vest: begin
+		row = rand_curent -1;
+		maze_oe = 1;
+		state_next = `wempty;
+	end
+	
+	`wempty:begin
+		state_next = `wwrite;
+	end
+	
+	`wwrite: begin
+		if( maze_in == 1 ) begin
+			row = rand_curent;
+			state_next = `sud;
+		end
+		else begin
+			maze_we = 1;
+			rand_curent = row;
+			state_next =`nord;
+			if ((col == 0 || col == 63 || row ==0 || row == 63))
+				state_next = `exit;
+		end
+		
+	end
+	
+	//Sud
+	
+	`sud: begin
+		col = coloana_curenta -1;
+		maze_oe = 1;
+		state_next = `sempty;
+	end
+	
+	`sempty: begin
+		state_next = `swrite;
+	end
+	
+	`swrite: begin
+		if( maze_in == 1 ) begin
+			col = coloana_curenta;
+			state_next = `est;
+		end
+		else begin
+			maze_we = 1;
+			coloana_curenta = col;
+			state_next = `vest;
+			if ((col == 0 || col == 63 || row ==0 || row == 63))
+				state_next = `exit;
+		end
+	end
+
+	//Est
+
+	`est: begin
+		row = rand_curent+1;
+		maze_oe = 1;
+		state_next = `eempty;
+	end
+	
+	`eempty: begin
+		state_next = `ewrite;
+	end
+	
+	`ewrite: begin
+		if( maze_in == 1 ) begin
+			row = rand_curent;
+			state_next = `nord;
+		end
+		else begin
+			maze_we = 1;
+			rand_curent = row;
+			state_next = `sud;
+			if ((col == 0 || col == 63 || row ==0 || row == 63))
+				state_next = `exit;
+		end
+	end
+	
+	`exit: begin
+		state_next = `exit;
+		done = 1;
+	end
+
+	endcase
+	
+	end
+
+endmodule
